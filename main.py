@@ -2,7 +2,10 @@
 from order import Order
 from order_book import OrderBook
 
+
 # Test 1: Validate orders
+print("\n--- Order Validation Test ---")
+
 try:
     order1 = Order(1, "BUY", 100, 10)
     print("Valid order:", order1.price)
@@ -15,7 +18,10 @@ except ValueError as e:
 
 print("Program continues...")
 
+
 # Test 2: Store BUY and SELL orders
+print("\n--- Order Storage Test ---")
+
 book = OrderBook()
 
 order1 = Order(1, "BUY", 100, 5)
@@ -28,10 +34,6 @@ order7 = Order(7, "BUY", 100, 5)
 order8 = Order(8, "BUY", 100, 5)
 order9 = Order(9, "BUY", 100, 5)
 
-
-
-
-
 book.add_order(order1)
 book.add_order(order2)
 book.add_order(order3)
@@ -39,22 +41,23 @@ book.add_order(order4)
 book.add_order(order5)
 book.add_order(order6)
 book.add_order(order7)
-book.add_order(order8)      
+book.add_order(order8)
+book.add_order(order9)
 
-# Display order counts
 print("BUY orders:", len(book.buy_orders))
 print("SELL orders:", len(book.sell_orders))
 
-# Test 3: Sort BUY orders by highest price first
-book.sort_buy_orders()
 
-# Test 4: Sort SELL orders by lowest price first
+# Test 3: Sort orders
+print("\n--- Sorting Test ---")
+
+book.sort_buy_orders()
 book.sort_sell_orders()
 
-# Test 5: Display order details
 book.display_orders()
 
 
+# Test 4: Match orders
 print("\n--- Matching Test ---")
 
 test_book = OrderBook()
@@ -69,4 +72,31 @@ test_book.match_orders()
 test_book.display_orders()
 
 
+# Test 5: Cancel orders
+print("\n--- Cancellation Test ---")
 
+cancel_book = OrderBook()
+
+cancel_book.add_order(Order(201, "BUY", 100, 5))
+cancel_book.add_order(Order(202, "SELL", 105, 3))
+cancel_book.add_order(Order(203, "BUY", 98, 2))
+
+print("\nBefore cancellation:")
+cancel_book.display_orders()
+
+# Cancel an existing BUY order
+cancel_book.cancel_order(201)
+
+print("\nAfter cancelling order 201:")
+cancel_book.display_orders()
+
+# Cancel an existing SELL order
+cancel_book.cancel_order(202)
+
+print("\nAfter cancelling order 202:")
+cancel_book.display_orders()
+
+# Try cancelling a nonexistent order
+cancel_book.cancel_order(999)
+
+print("\n--- All Tests Completed ---")
