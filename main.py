@@ -100,3 +100,20 @@ cancel_book.display_orders()
 cancel_book.cancel_order(999)
 
 print("\n--- All Tests Completed ---")
+
+
+print("\n--- Price-Time Priority Test ---")
+
+book = OrderBook()
+
+# Same price: Order 301 arrives first
+book.add_order(Order(301, "BUY", 100, 5))
+book.add_order(Order(302, "BUY", 100, 8))
+
+# SELL order matches both BUY orders
+book.add_order(Order(303, "SELL", 100, 6))
+
+book.match_orders()
+
+print("\nRemaining orders:")
+book.display_orders()
