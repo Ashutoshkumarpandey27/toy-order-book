@@ -60,6 +60,8 @@ test_book.add_order(Order(101, "BUY", 200, 10))
 test_book.add_order(Order(102, "SELL", 190, 6))
 
 test_book.match_orders()
+test_book.display_trades()
+
 test_book.display_orders()
 
 

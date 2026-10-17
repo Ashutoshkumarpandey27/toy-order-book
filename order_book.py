@@ -3,15 +3,20 @@ class OrderBook:
     def __init__(self):
         self.buy_orders = []
         self.sell_orders = []
+        self.trades = []
 
     def add_order(self, order):
+        # Reject duplicate IDs across BUY and SELL orders
+        for existing_order in self.buy_orders + self.sell_orders:
+            if existing_order.order_id == order.order_id:
+                raise ValueError("Duplicate order ID")
+
+        # Add order to the appropriate side
         if order.side == "BUY":
             self.buy_orders.append(order)
         else:
             self.sell_orders.append(order)
 
-
-    
     def cancel_order(self, order_id):
         for order in self.buy_orders:
             if order.order_id == order_id:
@@ -27,71 +32,79 @@ class OrderBook:
 
         print("Order not found:", order_id)
 
-
     def sort_buy_orders(self):
-        # Highest BUY price gets priority
+        # Highest BUY price first; stable sorting preserves arrival order
         self.buy_orders.sort(
             key=lambda order: order.price,
             reverse=True
         )
 
     def sort_sell_orders(self):
-        # Lowest SELL price gets priority
+        # Lowest SELL price first; stable sorting preserves arrival order
         self.sell_orders.sort(
             key=lambda order: order.price
         )
 
     def check_matching(self):
-        # Check whether both sides have orders
         if not self.buy_orders or not self.sell_orders:
             print("Not enough orders to match.")
             return
 
-        # Get the highest BUY and lowest SELL
+        self.sort_buy_orders()
+        self.sort_sell_orders()
+
         best_buy = self.buy_orders[0]
         best_sell = self.sell_orders[0]
 
-        # Check price compatibility
         if best_buy.price >= best_sell.price:
             print("Orders can match!")
         else:
             print("No match available.")
-    
+
     def match_orders(self):
-        # Sort both sides before matching
+        # Sort orders before matching
         self.sort_buy_orders()
         self.sort_sell_orders()
 
-        # Keep matching while both sides have orders
+        # Match as long as compatible orders exist
         while self.buy_orders and self.sell_orders:
             best_buy = self.buy_orders[0]
             best_sell = self.sell_orders[0]
 
-            # Stop if prices are not compatible
+            # Stop if prices do not cross
             if best_buy.price < best_sell.price:
                 print("No more matching possible.")
                 break
 
-            # Execute the smaller quantity
+            # Determine the quantity traded
             trade_quantity = min(
                 best_buy.quantity,
                 best_sell.quantity
             )
 
-            print("Trade executed!")
-            print("Trade quantity:", trade_quantity)
+            # Record the trade
+            trade = {
+                "buy_order_id": best_buy.order_id,
+                "sell_order_id": best_sell.order_id,
+                "price": best_sell.price,
+                "quantity": trade_quantity
+            }
 
-            # Reduce remaining quantities
+            self.trades.append(trade)
+
+            print("Trade executed!")
+            print("Trade details:", trade)
+
+            # Update remaining quantities
             best_buy.quantity -= trade_quantity
             best_sell.quantity -= trade_quantity
 
-            # Remove completely filled orders
+            # Remove fully filled orders
             if best_buy.quantity == 0:
                 self.buy_orders.pop(0)
 
             if best_sell.quantity == 0:
                 self.sell_orders.pop(0)
-
 
     def display_orders(self):
         print("BUY ORDERS:")
@@ -112,3 +125,17 @@ class OrderBook:
                 "Quantity:", order.quantity
             )
 
+    def display_trades(self):
+        print("TRADE HISTORY:")
+
+        if not self.trades:
+            print("No trades executed yet.")
+            return
+
+        for trade in self.trades:
+            print(
+                "BUY ID:", trade["buy_order_id"],
+                "| SELL ID:", trade["sell_order_id"],
+                "| Price:", trade["price"],
+                "| Quantity:", trade["quantity"]
+            )
