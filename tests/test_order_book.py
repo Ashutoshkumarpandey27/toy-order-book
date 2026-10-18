@@ -176,3 +176,223 @@ def test_no_trade_history_when_orders_do_not_match():
     book.match_orders()
 
     assert book.trades == []
+
+
+
+
+def test_get_best_bid():
+    book = OrderBook()
+
+    book.add_order(Order(401, "BUY", 100, 5))
+    book.add_order(Order(402, "BUY", 110, 3))
+    book.add_order(Order(403, "BUY", 105, 7))
+
+    assert book.get_best_bid() == 110
+
+
+def test_get_best_bid_when_book_is_empty():
+    book = OrderBook()
+
+    assert book.get_best_bid() is None
+def test_get_best_ask():
+    book = OrderBook()
+
+    book.add_order(Order(501, "SELL", 120, 5))
+    book.add_order(Order(502, "SELL", 115, 3))
+    book.add_order(Order(503, "SELL", 125, 7))
+
+    assert book.get_best_ask() == 115
+
+
+def test_get_best_ask_when_book_is_empty():
+    book = OrderBook()
+
+    assert book.get_best_ask() is None
+def test_get_spread():
+    book = OrderBook()
+
+    book.add_order(Order(601, "BUY", 110, 5))
+    book.add_order(Order(602, "SELL", 115, 3))
+
+    assert book.get_spread() == 5
+
+
+def test_get_spread_when_book_is_empty():
+    book = OrderBook()
+
+    assert book.get_spread() is None
+
+
+def test_get_spread_when_one_side_is_empty():
+    book = OrderBook()
+
+    book.add_order(Order(603, "BUY", 110, 5))
+
+    assert book.get_spread() is None 
+
+
+def test_total_traded_volume():
+    book = OrderBook()
+
+    book.add_order(Order(701, "BUY", 110, 5))
+    book.add_order(Order(702, "SELL", 100, 3))
+    book.match_orders()
+
+    book.add_order(Order(703, "BUY", 120, 4))
+    book.add_order(Order(704, "SELL", 115, 2))
+    book.match_orders()
+
+    assert book.get_total_traded_volume() == 5
+
+
+def test_total_traded_volume_when_no_trades():
+    book = OrderBook()
+
+    assert book.get_total_traded_volume() == 0
+
+
+def test_total_traded_volume_with_partial_fill():
+    book = OrderBook()
+
+    book.add_order(Order(705, "BUY", 120, 10))
+    book.add_order(Order(706, "SELL", 110, 4))
+    book.match_orders()
+
+    assert book.get_total_traded_volume() == 4
+
+
+
+def test_market_depth_groups_buy_orders_by_price():
+    book = OrderBook()
+
+    book.add_order(Order(801, "BUY", 110, 5))
+    book.add_order(Order(802, "BUY", 110, 3))
+    book.add_order(Order(803, "BUY", 105, 7))
+
+    depth = book.get_market_depth()
+
+    assert depth["BUY"] == {
+        110: 8,
+        105: 7
+    }
+
+
+def test_market_depth_groups_sell_orders_by_price():
+    book = OrderBook()
+
+    book.add_order(Order(804, "SELL", 120, 4))
+    book.add_order(Order(805, "SELL", 115, 6))
+    book.add_order(Order(806, "SELL", 120, 2))
+
+    depth = book.get_market_depth()
+
+    assert depth["SELL"] == {
+        115: 6,
+        120: 6
+    }
+
+
+def test_market_depth_sorts_prices_correctly():
+    book = OrderBook()
+
+    book.add_order(Order(807, "BUY", 100, 2))
+    book.add_order(Order(808, "BUY", 110, 3))
+    book.add_order(Order(809, "SELL", 130, 4))
+    book.add_order(Order(810, "SELL", 120, 5))
+
+    depth = book.get_market_depth()
+
+    assert list(depth["BUY"].keys()) == [110, 100]
+    assert list(depth["SELL"].keys()) == [120, 130]
+
+
+def test_market_depth_when_order_book_is_empty():
+    book = OrderBook()
+
+    assert book.get_market_depth() == {
+        "BUY": {},
+        "SELL": {}
+    }
+
+def test_cumulative_buy_market_depth():
+    book = OrderBook()
+
+    book.add_order(Order(901, "BUY", 110, 5))
+    book.add_order(Order(902, "BUY", 110, 3))
+    book.add_order(Order(903, "BUY", 105, 7))
+
+    depth = book.get_cumulative_market_depth()
+
+    assert depth["BUY"] == {
+        110: 8,
+        105: 15
+    }
+
+
+def test_cumulative_sell_market_depth():
+    book = OrderBook()
+
+    book.add_order(Order(904, "SELL", 115, 4))
+    book.add_order(Order(905, "SELL", 120, 6))
+    book.add_order(Order(906, "SELL", 120, 2))
+
+    depth = book.get_cumulative_market_depth()
+
+    assert depth["SELL"] == {
+        115: 4,
+        120: 12
+    }
+
+
+def test_cumulative_market_depth_when_empty():
+    book = OrderBook()
+
+    assert book.get_cumulative_market_depth() == {
+        "BUY": {},
+        "SELL": {}
+    }
+
+
+def test_cumulative_market_depth_keeps_price_order():
+    book = OrderBook()
+
+    book.add_order(Order(907, "BUY", 100, 2))
+    book.add_order(Order(908, "BUY", 110, 3))
+    book.add_order(Order(909, "SELL", 130, 4))
+    book.add_order(Order(910, "SELL", 120, 5))
+
+    depth = book.get_cumulative_market_depth()
+
+    assert list(depth["BUY"].keys()) == [110, 100]
+    assert list(depth["SELL"].keys()) == [120, 130]
+
+
+
+def test_order_book_stats():
+    book = OrderBook()
+
+    book.add_order(Order(1001, "BUY", 100, 5))
+    book.add_order(Order(1002, "BUY", 105, 3))
+    book.add_order(Order(1003, "SELL", 110, 4))
+
+    stats = book.get_order_book_stats()
+
+    assert stats == {
+        "active_buy_orders": 2,
+        "active_sell_orders": 1,
+        "total_buy_quantity": 8,
+        "total_sell_quantity": 4,
+        "total_active_orders": 3
+    }
+
+
+def test_order_book_stats_when_empty():
+    book = OrderBook()
+
+    assert book.get_order_book_stats() == {
+        "active_buy_orders": 0,
+        "active_sell_orders": 0,
+        "total_buy_quantity": 0,
+        "total_sell_quantity": 0,
+        "total_active_orders": 0
+    }
