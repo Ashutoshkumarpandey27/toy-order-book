@@ -396,3 +396,67 @@ def test_order_book_stats_when_empty():
         "total_sell_quantity": 0,
         "total_active_orders": 0
     }
+
+    
+def test_vwap_with_multiple_trades():
+    book = OrderBook()
+
+    book.trades = [
+        {
+            "buy_order_id": 1,
+            "sell_order_id": 2,
+            "price": 50,
+            "quantity": 2
+        },
+        {
+            "buy_order_id": 3,
+            "sell_order_id": 4,
+            "price": 60,
+            "quantity": 3
+        }
+    ]
+
+    assert book.get_vwap() == pytest.approx(56.0)
+
+
+def test_vwap_with_no_trades():
+    book = OrderBook()
+
+    assert book.get_vwap() is None
+
+
+def test_vwap_with_single_trade():
+    book = OrderBook()
+
+    book.trades = [
+        {
+            "buy_order_id": 5,
+            "sell_order_id": 6,
+            "price": 100,
+            "quantity": 4
+        }
+    ]
+
+    assert book.get_vwap() == pytest.approx(100.0)
+
+
+
+def test_vwap_after_actual_order_matching():
+    book = OrderBook()
+
+    book.add_order(Order(1101, "BUY", 110, 5))
+    book.add_order(Order(1102, "SELL", 100, 3))
+
+    book.match_orders()
+
+    assert book.get_total_traded_volume() == 3
+    assert book.get_vwap() == pytest.approx(100.0)
+
+    # BUY order should have 2 units remaining
+    assert len(book.buy_orders) == 1
+    assert book.buy_orders[0].quantity == 2
+
+    # SELL order should be completely filled
+    assert len(book.sell_orders) == 0
+
+
