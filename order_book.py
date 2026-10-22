@@ -134,36 +134,17 @@ class OrderBook:
                     trade_price
                 )
 
+            # Remove completely filled resting orders
             if best_opposite.quantity == 0:
                 opposite_orders.pop(0)
 
-        # Custom policy: rest any remainder at the last traded price.
+        # Cancel any unfilled MARKET order quantity.
+        # Never add the remaining MARKET quantity to the book.
         if order.quantity > 0:
-            if self.last_traded_price is None:
-                print(
-                    "Market order could not execute: "
-                    "no opposite orders or last traded price available. "
-                    "Remaining quantity was not added to the book."
-                )
-                return
-
-            order.price = self.last_traded_price
-            order.order_type = "LIMIT"
-
-            if order.side == "BUY":
-                self.buy_orders.append(order)
-            else:
-                self.sell_orders.append(order)
-
             print(
-                "Unfilled quantity rested as LIMIT order at:",
-                order.price,
-                "| Remaining quantity:",
+                "Unfilled MARKET order quantity cancelled:",
                 order.quantity
             )
-
-        # Match any crossed resting orders after processing the market order.
-        self.match_orders()
 
     def match_orders(self):
         self.sort_buy_orders()

@@ -460,3 +460,124 @@ def test_vwap_after_actual_order_matching():
     assert len(book.sell_orders) == 0
 
 
+
+def test_market_buy_matches_multiple_sell_orders():
+    order_book = OrderBook()
+
+    order_book.add_order(Order(1, "SELL", 100, 3))
+    order_book.add_order(Order(2, "SELL", 101, 4))
+
+    market_buy = Order(3, "BUY", 0, 5, "MARKET")
+    order_book.add_order(market_buy)
+
+    assert len(order_book.trades) == 2
+
+    assert order_book.trades[0]["price"] == 100
+    assert order_book.trades[0]["quantity"] == 3
+
+    assert order_book.trades[1]["price"] == 101
+    assert order_book.trades[1]["quantity"] == 2
+
+    assert len(order_book.sell_orders) == 1
+    assert order_book.sell_orders[0].order_id == 2
+    assert order_book.sell_orders[0].quantity == 2
+
+    assert market_buy.quantity == 0
+
+
+
+def test_unfilled_market_buy_quantity_is_cancelled():
+    order_book = OrderBook()
+
+    order_book.add_order(Order(1, "SELL", 100, 3))
+
+    market_buy = Order(2, "BUY", 0, 5, "MARKET")
+    order_book.add_order(market_buy)
+
+    assert len(order_book.trades) == 1
+    assert order_book.trades[0]["quantity"] == 3
+
+    # 3 units execute hue; 2 units unfilled rahe.
+    assert market_buy.quantity == 2
+
+    # Unfilled MARKET quantity order book mein nahi honi chahiye.
+    assert order_book.buy_orders == []
+    assert order_book.sell_orders == []
+
+
+
+def test_cancel_nonexistent_order(capsys):
+    order_book = OrderBook()
+
+    order_book.add_order(Order(1, "BUY", 100, 5))
+
+    order_book.cancel_order(99)
+
+    captured = capsys.readouterr()
+
+    assert "Order not found: 99" in captured.out
+    assert len(order_book.buy_orders) == 1
+    assert order_book.buy_orders[0].order_id == 1
+
+
+
+def test_cancel_fully_filled_order(capsys):
+    order_book = OrderBook()
+
+    order_book.add_order(Order(1, "BUY", 100, 5))
+    order_book.add_order(Order(2, "SELL", 100, 5))
+
+    order_book.match_orders()
+
+    assert order_book.buy_orders == []
+    assert order_book.sell_orders == []
+
+    order_book.cancel_order(1)
+
+    captured = capsys.readouterr()
+    assert "Order not found: 1" in captured.out
+
+
+
+def test_cancel_partially_filled_order(capsys):
+    order_book = OrderBook()
+
+    order_book.add_order(Order(1, "BUY", 100, 5))
+    order_book.add_order(Order(2, "SELL", 100, 2))
+
+    order_book.match_orders()
+
+    assert len(order_book.buy_orders) == 1
+    assert order_book.buy_orders[0].quantity == 3
+
+    order_book.cancel_order(1)
+
+    assert order_book.buy_orders == []
+    assert order_book.sell_orders == []
+
+    captured = capsys.readouterr()
+    assert "Order cancelled: 1" in captured.out
+
+
+
+
+def test_order_can_be_added_after_duplicate_is_rejected():
+    book = OrderBook()
+
+    book.add_order(Order(1, "BUY", 100, 5))
+
+    duplicate = Order(1, "SELL", 105, 3)
+
+    import pytest
+
+    with pytest.raises(ValueError, match="Duplicate order ID"):
+        book.add_order(duplicate)
+
+    book.cancel_order(1)
+
+    new_order = Order(1, "SELL", 105, 3)
+    book.add_order(new_order)
+
+    assert len(book.buy_orders) == 0
+    assert len(book.sell_orders) == 1
+    assert book.sell_orders[0].order_id == 1
