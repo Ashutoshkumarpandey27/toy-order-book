@@ -180,6 +180,7 @@ def test_no_trade_history_when_orders_do_not_match():
 
 
 
+
 def test_get_best_bid():
     book = OrderBook()
 
@@ -581,3 +582,159 @@ def test_order_can_be_added_after_duplicate_is_rejected():
     assert len(book.buy_orders) == 0
     assert len(book.sell_orders) == 1
     assert book.sell_orders[0].order_id == 1
+
+
+
+
+
+def test_market_sell_matches_multiple_buy_orders():
+    order_book = OrderBook()
+
+    order_book.add_order(Order(1, "BUY", 100, 2))
+    order_book.add_order(Order(2, "BUY", 99, 4))
+
+    market_sell = Order(3, "SELL", 0, 3, "MARKET")
+    order_book.add_order(market_sell)
+
+    assert len(order_book.trades) == 2
+
+    assert order_book.trades[0]["price"] == 100
+    assert order_book.trades[0]["quantity"] == 2
+
+    assert order_book.trades[1]["price"] == 99
+    assert order_book.trades[1]["quantity"] == 1
+
+    assert len(order_book.buy_orders) == 1
+    assert order_book.buy_orders[0].order_id == 2
+    assert order_book.buy_orders[0].quantity == 3
+
+    assert order_book.sell_orders == []
+    assert market_sell.quantity == 0
+
+
+
+def test_unfilled_market_sell_quantity_is_cancelled():
+    order_book = OrderBook()
+
+    order_book.add_order(Order(1, "BUY", 100, 3))
+
+    market_sell = Order(2, "SELL", 0, 5, "MARKET")
+    order_book.add_order(market_sell)
+
+    assert len(order_book.trades) == 1
+    assert order_book.trades[0]["price"] == 100
+    assert order_book.trades[0]["quantity"] == 3
+
+    assert market_sell.quantity == 2
+    assert order_book.buy_orders == []
+    assert order_book.sell_orders == []
+
+
+
+def test_market_buy_with_empty_sell_book():
+    order_book = OrderBook()
+
+    market_buy = Order(1, "BUY", 0, 5, "MARKET")
+    order_book.add_order(market_buy)
+
+    assert order_book.trades == []
+    assert market_buy.quantity == 5
+    assert order_book.buy_orders == []
+    assert order_book.sell_orders == []
+
+
+
+
+def test_market_sell_with_empty_buy_book():
+    order_book = OrderBook()
+
+    market_sell = Order(1, "SELL", 0, 5, "MARKET")
+    order_book.add_order(market_sell)
+
+    assert order_book.trades == []
+    assert market_sell.quantity == 5
+    assert order_book.buy_orders == []
+    assert order_book.sell_orders == []
+
+
+
+def test_active_order_ids_after_cancellation():
+    book = OrderBook()
+    order = Order(101, "BUY", 100, 5)
+
+    book.add_order(order)
+    assert 101 in book.active_order_ids
+
+    book.cancel_order(101)
+    assert 101 not in book.active_order_ids
+
+
+def test_active_order_ids_after_full_match():
+    book = OrderBook()
+
+    buy = Order(102, "BUY", 105, 5)
+    sell = Order(103, "SELL", 100, 5)
+
+    book.add_order(buy)
+    book.add_order(sell)
+    book.match_orders()
+
+    assert 102 not in book.active_order_ids
+    assert 103 not in book.active_order_ids
+
+
+def test_active_order_ids_after_market_order_fills_limit():
+    book = OrderBook()
+
+    sell = Order(104, "SELL", 100, 5)
+    market_buy = Order(
+        105, "BUY", 0, 5, order_type="MARKET"
+    )
+
+    book.add_order(sell)
+    book.add_order(market_buy)
+
+    assert 104 not in book.active_order_ids
+    assert 105 not in book.active_order_ids
+
+
+
+
+def test_duplicate_id_rejected_after_partial_fill():
+    book = OrderBook()
+    buy = Order(301, "BUY", 105, 10)
+    sell = Order(302, "SELL", 100, 4)
+
+    book.add_order(buy)
+    book.add_order(sell)
+    book.match_orders()
+
+    assert buy.quantity == 6
+    assert 301 in book.active_order_ids
+
+    with pytest.raises(ValueError, match="Duplicate order ID"):
+        book.add_order(Order(301, "BUY", 99, 2))
+
+
+def test_order_id_can_be_reused_after_cancellation():
+    book = OrderBook()
+    book.add_order(Order(303, "BUY", 100, 5))
+
+    book.cancel_order(303)
+    book.add_order(Order(303, "SELL", 110, 3))
+
+    assert 303 in book.active_order_ids
+    assert len(book.sell_orders) == 1
+
+
+def test_active_order_ids_match_resting_orders():
+    book = OrderBook()
+    book.add_order(Order(304, "BUY", 100, 5))
+    book.add_order(Order(305, "SELL", 110, 7))
+
+    expected_ids = {
+        order.order_id
+        for order in book.buy_orders + book.sell_orders
+    }
+
+    assert book.active_order_ids == expected_ids
